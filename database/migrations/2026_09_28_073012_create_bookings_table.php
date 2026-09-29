@@ -13,10 +13,16 @@ return new class extends Migration
     {
         Schema::create('bookings', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('room_id')->constrained()->cascadeOnDelete();
+            $table->string('title');
+            $table->string('booked_by');
+            $table->dateTime('starts_at');
+            $table->dateTime('ends_at');
             $table->timestamps();
+    
+            $table->index(['room_id', 'starts_at', 'ends_at']);
         });
     }
-
     /**
      * Reverse the migrations.
      */
