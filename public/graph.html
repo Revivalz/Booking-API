@@ -261,7 +261,7 @@
 
 <div class="layout">
   <div class="panel">
-    <h2>Add booking</h2>
+    <h2 id="formTitle">Add booking</h2>
     <div class="field">
       <label>Room</label>
       <select id="fRoom"></select>
@@ -285,6 +285,8 @@
       </div>
     </div>
     <button class="primary" id="fSubmit">Add booking</button>
+    <button class="secondary" id="fDelete" style="display:none; color:#A23B2E; border-color:#A23B2E;">Delete booking</button>
+    <button class="secondary" id="fCancel" style="display:none;">Cancel edit</button>
     <div class="msg" id="fMsg"></div>
 
     <div class="list-title">Bookings on this day</div>
@@ -304,8 +306,9 @@
   // API base — change this if your server address ever moves.
   const apiBase = "http://127.0.0.1:8000/api";
   let rooms = [];        // [{id, name, capacity, location}]
-  let dayBookings = [];  // [{room, title, booked_by, starts_at, ends_at}] for the current date, across all rooms
+  let dayBookings = [];  // [{id, room, title, booked_by, starts_at, ends_at}] for the current date, across all rooms
   let currentDate = TODAY;
+  let editingId = null;
 
   const DAY_START = 0;
   const DAY_END = 24;
@@ -317,6 +320,9 @@
   const roomSelect = document.getElementById("fRoom");
   const msgEl = document.getElementById("fMsg");
   const submitBtn = document.getElementById("fSubmit");
+  const cancelBtn = document.getElementById("fCancel");
+  const deleteBtn = document.getElementById("fDelete");
+  const formTitle = document.getElementById("formTitle");
   const dateInput = document.getElementById("dateInput");
   const apiStatus = document.getElementById("apiStatus");
 
@@ -398,7 +404,7 @@
         const height = Math.max(((endMin - startMin) / 60) * HOUR_HEIGHT, MIN_BLOCK_HEIGHT);
 
         blocksHtml += `
-          <div class="block" style="top:${top}px; height:${height}px;">
+          <div class="block" style="top:${top}px; height:${height}px;" data-id="${b.id}">
             <div class="title">${escapeHtml(b.title)}</div>
             <div class="time">${b.starts_at}–${b.ends_at}</div>
             <div class="by">${escapeHtml(b.booked_by)}</div>
@@ -423,6 +429,10 @@
         <div class="rooms">${roomsHtml}</div>
       </div>
     `;
+
+    timelineEl.querySelectorAll(".block").forEach(el => {
+      el.addEventListener("click", () => startEdit(el.dataset.id));
+    });
   }
 
   function renderList() {
@@ -460,6 +470,53 @@
   });
   document.getElementById("todayBtn").addEventListener("click", () => goToDate(TODAY));
 
+  function startEdit(id) {
+    const b = dayBookings.find(x => String(x.id) === String(id));
+    if (!b) return;
+    const room = rooms.find(r => r.name === b.room);
+    editingId = id;
+    if (room) roomSelect.value = room.id;
+    document.getElementById("fTitle").value = b.title;
+    document.getElementById("fBy").value = b.booked_by;
+    document.getElementById("fStart").value = b.starts_at;
+    document.getElementById("fEnd").value = b.ends_at;
+    formTitle.textContent = "Edit booking";
+    submitBtn.textContent = "Save changes";
+    cancelBtn.style.display = "block";
+    deleteBtn.style.display = "block";
+    msgEl.textContent = "";
+  }
+
+  function resetForm() {
+    editingId = null;
+    document.getElementById("fTitle").value = "";
+    document.getElementById("fBy").value = "";
+    document.getElementById("fStart").value = "09:00";
+    document.getElementById("fEnd").value = "10:00";
+    formTitle.textContent = "Add booking";
+    submitBtn.textContent = "Add booking";
+    cancelBtn.style.display = "none";
+    deleteBtn.style.display = "none";
+    msgEl.textContent = "";
+  }
+
+  cancelBtn.addEventListener("click", resetForm);
+
+  deleteBtn.addEventListener("click", async () => {
+    if (!editingId) return;
+    if (!confirm("Delete this booking?")) return;
+    deleteBtn.disabled = true;
+    try {
+      await api(`/bookings/${editingId}`, { method: "DELETE" });
+      resetForm();
+      await loadDay();
+    } catch (e) {
+      msgEl.textContent = e.message;
+    } finally {
+      deleteBtn.disabled = false;
+    }
+  });
+
   submitBtn.addEventListener("click", async () => {
     const roomId = roomSelect.value;
     const title = document.getElementById("fTitle").value.trim();
@@ -478,20 +535,21 @@
     }
 
     submitBtn.disabled = true;
-    submitBtn.textContent = "Booking…";
+    submitBtn.textContent = editingId ? "Saving…" : "Booking…";
     try {
-      await api("/bookings", {
-        method: "POST",
-        body: JSON.stringify({
-          room_id: roomId,
-          title: title,
-          booked_by: by,
-          starts_at: `${currentDate} ${start}:00`,
-          ends_at: `${currentDate} ${end}:00`
-        })
-      });
-      document.getElementById("fTitle").value = "";
-      document.getElementById("fBy").value = "";
+      const payload = {
+        room_id: roomId,
+        title: title,
+        booked_by: by,
+        starts_at: `${currentDate} ${start}:00`,
+        ends_at: `${currentDate} ${end}:00`
+      };
+      if (editingId) {
+        await api(`/bookings/${editingId}`, { method: "PUT", body: JSON.stringify(payload) });
+      } else {
+        await api("/bookings", { method: "POST", body: JSON.stringify(payload) });
+      }
+      resetForm();
       await loadDay();
     } catch (e) {
       let text = e.message;
@@ -501,7 +559,7 @@
       msgEl.textContent = text;
     } finally {
       submitBtn.disabled = false;
-      submitBtn.textContent = "Add booking";
+      submitBtn.textContent = editingId ? "Save changes" : "Add booking";
     }
   });
 

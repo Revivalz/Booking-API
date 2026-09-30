@@ -1,58 +1,128 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Room Booking API
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A REST API for booking meeting rooms, built with Laravel and MySQL. Prevents overlapping bookings for the same room and includes a simple HTML dashboard for viewing and managing bookings visually.
 
-## About Laravel
+## Requirements
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- PHP 8.2+
+- Composer
+- MySQL 8+
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
-
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
-
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+## Setup
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+git clone <repo-url>
+cd room-booking-api
+composer install
+cp .env.example .env
+php artisan key:generate
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+Create a MySQL database named `room_booking`:
 
-## Contributing
+```bash
+mysql -u root -p -e "CREATE DATABASE room_booking CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Then set `DB_USERNAME` and `DB_PASSWORD` in `.env` to match your local setup.
 
-## Code of Conduct
+```bash
+php artisan migrate:fresh --seed
+php artisan serve
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+API base URL: `http://127.0.0.1:8000/api`
 
-## Security Vulnerabilities
+## Dashboard
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+A standalone HTML dashboard (`public/dashboard.html`) is included for visually browsing and managing bookings — a day-by-day timeline per room, with a panel to add, edit and delete bookings.
 
-## License
+Open it at `http://127.0.0.1:8000/dashboard.html` while `php artisan serve` is running. It talks to the API directly from the browser (no build step needed) and expects the API base URL set near the top of its `<script>` tag to match your server address.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## Endpoints
+
+### Rooms
+
+| Method | URL | Description |
+|---|---|---|
+| GET | `/api/rooms` | List all active rooms |
+| GET | `/api/rooms/{id}` | Get a single room (404 if it doesn't exist) |
+| POST | `/api/rooms` | Create a new room |
+
+**POST /api/rooms**
+```json
+// Request
+{ "name": "Meeting Room B", "capacity": 6, "location": "3rd floor" }
+
+// Response (201)
+{ "id": 2, "name": "Meeting Room B", "capacity": 6, "location": "3rd floor", "is_active": true, ... }
+```
+
+### Room schedule
+
+| Method | URL | Description |
+|---|---|---|
+| GET | `/api/rooms/{id}/schedule/{date}` | All bookings for a room on a given date (`YYYY-MM-DD`), sorted by start time |
+| GET | `/api/rooms/{id}/current` | Whether the room is occupied right now |
+| GET | `/api/rooms/{id}/upcoming` | The next 5 upcoming bookings for the room |
+
+**GET /api/rooms/1/schedule/2026-10-05**
+```json
+[
+  { "id": 4, "title": "Morning Meeting", "booked_by": "Anna", "starts_at": "09:00", "ends_at": "10:00" }
+]
+```
+
+**GET /api/rooms/1/current**
+```json
+{ "occupied": true, "booking": { "title": "Dev Meeting", "booked_by": "Toms", "starts_at": "10:00", "ends_at": "11:00" } }
+```
+
+### Bookings
+
+| Method | URL | Description |
+|---|---|---|
+| POST | `/api/bookings` | Create a new booking |
+| PUT | `/api/bookings/{id}` | Update an existing booking |
+| DELETE | `/api/bookings/{id}` | Delete a booking |
+
+**POST /api/bookings**
+```json
+// Request
+{
+  "room_id": 1,
+  "title": "Development Team Meeting",
+  "booked_by": "Toms",
+  "starts_at": "2026-10-05 10:00:00",
+  "ends_at": "2026-10-05 11:00:00"
+}
+
+// Success: 201 + the created booking
+// Overlap or validation failure: 422
+{ "message": "Room is already booked for this period." }
+```
+
+`PUT /api/bookings/{id}` accepts the same body and applies the same overlap check, excluding the booking being edited. `DELETE /api/bookings/{id}` returns `204 No Content` on success.
+
+## Decisions and assumptions
+
+- **Overlap rule:** a new booking is rejected if `existing.starts_at < new.ends_at AND existing.ends_at > new.starts_at`. This allows back-to-back bookings (e.g. 09:00–10:00 followed immediately by 10:00–11:00).
+- **Overlap and inactive-room errors** return HTTP 422 with a JSON `message` field.
+- **Bookings cannot be created for inactive rooms.**
+- **Booking creation runs inside a database transaction** with a row lock (`lockForUpdate`) on the room, to prevent two simultaneous requests from both passing the overlap check.
+- **Timezone:** `APP_TIMEZONE` is set to `Europe/Riga`; the `current` endpoint compares against `now()` in this timezone.
+- **Time formatting:** `schedule` and `current` return times as `HH:MM` (same-day context). `upcoming` returns full `YYYY-MM-DD HH:MM` since results can span multiple days.
+- **API routes are JSON-only:** all API errors (validation, 404, 422) return JSON, enforced via `shouldRenderJsonWhen` in `bootstrap/app.php`.
+
+## Seeding
+
+```bash
+php artisan migrate:fresh --seed
+```
+
+Creates 5+ rooms and 15–20 bookings with hand-picked, non-overlapping times, including one active "right now" for testing the `current` endpoint.
+
+## Notes for reviewers
+
+- No authentication is currently implemented — all endpoints are open. (Left as-is per the assignment's base scope; Sanctum auth is one of the listed optional extensions.)
+- Request rate limiting has not yet been added — a reasonable next step before any public deployment would be Laravel's built-in `throttle` middleware.
