@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bookings — Timeline</title>
+<style>
+  body {
+    margin: 0;
+    padding: 30px;
+    background: #F6F4EE;
+    font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    color: #24272A;
+  }
+  .top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  h1 { font-size: 22px; margin: 0; }
+  .top-controls { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .api-config { display: flex; align-items: center; gap: 6px; font-size: 12.5px; }
+  .api-config input {
+    width: 250px;
+    padding: 6px 8px;
+    border: 1px solid #DEDACD;
+    border-radius: 3px;
+    font-size: 12.5px;
+    font-family: inherit;
+    background: #fff;
+  }
+  .api-config button {
+    padding: 6px 10px;
+    border: 1px solid #1B4B43;
+    background: #fff;
+    border-radius: 3px;
+    font-size: 12.5px;
+    cursor: pointer;
+    color: #1B4B43;
+  }
+  .api-config button:hover { background: #EDF2EF; }
+  .api-status { font-size: 12px; color: #6B6F6C; margin-bottom: 14px; }
+  .api-status.bad { color: #A23B2E; }
+  .date-picker { display: flex; align-items: center; gap: 8px; }
+  .date-picker input {
+    padding: 7px 9px;
+    border: 1px solid #DEDACD;
+    border-radius: 3px;
+    font-size: 13.5px;
+    font-family: inherit;
+    background: #fff;
+  }
+  .date-picker button {
+    padding: 7px 10px;
+    border: 1px solid #DEDACD;
+    background: #fff;
+    border-radius: 3px;
+    font-size: 13px;
+    cursor: pointer;
+    color: #1B4B43;
+  }
+  .date-picker button:hover { background: #EDF2EF; }
+
+  .layout { display: flex; gap: 24px; align-items: flex-start; }
+
+  /* ---- Timeline ---- */
+  .timeline {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    background: #fff;
+    border: 1px solid #DEDACD;
+    border-radius: 4px;
+    max-height: 640px;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  .hours { width: 55px; flex-shrink: 0; border-right: 1px solid #DEDACD; }
+  .spacer-cell {
+    height: 36px;
+    box-sizing: border-box;
+  }
+  .hour-label {
+    position: relative;
+    height: 90px;
+    box-sizing: border-box;
+  }
+  .hour-text {
+    position: absolute;
+    top: 0;
+    right: 8px;
+    transform: translateY(-50%);
+    font-size: 13px;
+    font-weight: 700;
+    color: #24272A;
+    white-space: nowrap;
+  }
+  .hour-label::after {
+    content: ":30";
+    position: absolute;
+    top: 50%;
+    right: 8px;
+    transform: translateY(-50%);
+    font-size: 10.5px;
+    font-weight: 400;
+    color: #9A968A;
+  }
+  .rooms { flex: 1; display: flex; position: relative; }
+  .room-col { flex: 1; position: relative; border-right: 1px solid #EFEDE4; }
+  .room-col:last-child { border-right: none; }
+  .room-header {
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #1B4B43;
+    background: #EDF2EF;
+    border-bottom: 1px solid #DEDACD;
+    text-align: center;
+    padding: 0 4px;
+  }
+  .room-body { position: relative; }
+  .grid-line {
+    position: relative;
+    height: 90px;
+    border-bottom: 1px solid #C9C4B3;
+    box-sizing: border-box;
+  }
+  .grid-line::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    border-top: 1px dashed #A9A498;
+  }
+
+  .block {
+    position: absolute;
+    left: 5px;
+    right: 5px;
+    background: #1B4B43;
+    color: #fff;
+    border-radius: 3px;
+    box-sizing: border-box;
+    overflow: hidden;
+    cursor: pointer;
+    padding: 3px 7px;
+  }
+  .block:hover { background: #123530; }
+  .block .title {
+    font-weight: 600;
+    font-size: 11px;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .block .time { opacity: 0.85; font-size: 9.5px; line-height: 1.2; white-space: nowrap; }
+  .block .by {
+    opacity: 0.8;
+    font-size: 9.5px;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .empty-day { padding: 12px 0; text-align: left; color: #8A8D89; font-size: 13.5px; }
+
+  /* ---- Side panel ---- */
+  .panel { width: 300px; background: #fff; border: 1px solid #DEDACD; border-radius: 4px; padding: 18px; }
+  .panel h2 { font-size: 15px; margin: 0 0 14px; color: #1B4B43; }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 12px; color: #6B6F6C; margin-bottom: 4px; }
+  .field input, .field select {
+    width: 100%;
+    padding: 7px 9px;
+    border: 1px solid #DEDACD;
+    border-radius: 3px;
+    font-size: 13.5px;
+    font-family: inherit;
+    box-sizing: border-box;
+    background: #FCFBF8;
+  }
+  .inline { display: flex; gap: 8px; }
+  .inline .field { flex: 1; }
+  button.primary {
+    width: 100%;
+    background: #1B4B43;
+    color: #fff;
+    border: none;
+    padding: 9px;
+    border-radius: 3px;
+    font-size: 13.5px;
+    cursor: pointer;
+    margin-top: 4px;
+  }
+  button.primary:hover { background: #123530; }
+  button.secondary {
+    width: 100%;
+    background: transparent;
+    color: #6B6F6C;
+    border: 1px solid #DEDACD;
+    padding: 8px;
+    border-radius: 3px;
+    font-size: 12.5px;
+    cursor: pointer;
+    margin-top: 6px;
+  }
+  .msg { font-size: 12.5px; margin-top: 8px; color: #A23B2E; }
+  .list-title { font-size: 12px; color: #8A8D89; margin: 18px 0 8px; text-transform: uppercase; letter-spacing: 0.4px; }
+  .booking-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12.5px;
+    padding: 6px 0;
+    border-bottom: 1px solid #EFEDE4;
+  }
+  .booking-row .info { flex: 1; }
+  .booking-row .del { color: #A23B2E; cursor: pointer; font-size: 12px; margin-left: 8px; }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <h1>Room Schedule</h1>
+  <div class="top-controls">
+    <div class="api-config">
+      <input id="apiBase" placeholder="http://room-booking-api.test/api">
+      <button id="saveApi">Connect</button>
+    </div>
+    <div class="date-picker">
+      <button id="prevDay">‹</button>
+      <input type="date" id="dateInput">
+      <button id="nextDay">›</button>
+      <button id="todayBtn">Today</button>
+    </div>
+  </div>
+</div>
+<div class="api-status" id="apiStatus">Not connected — enter your API base URL above.</div>
+
+<div class="layout">
+  <div class="panel">
+    <h2>Add booking</h2>
+    <div class="field">
+      <label>Room</label>
+      <select id="fRoom"></select>
+    </div>
+    <div class="field">
+      <label>Title</label>
+      <input type="text" id="fTitle" placeholder="Team sync">
+    </div>
+    <div class="field">
+      <label>Booked by</label>
+      <input type="text" id="fBy" placeholder="Name">
+    </div>
+    <div class="inline">
+      <div class="field">
+        <label>Starts</label>
+        <input type="time" id="fStart" value="09:00">
+      </div>
+      <div class="field">
+        <label>Ends</label>
+        <input type="time" id="fEnd" value="10:00">
+      </div>
+    </div>
+    <button class="primary" id="fSubmit">Add booking</button>
+    <div class="msg" id="fMsg"></div>
+
+    <div class="list-title">Bookings on this day</div>
+    <div id="bookingList"></div>
+  </div>
+
+  <div class="timeline" id="timeline"></div>
+</div>
+
+<script>
+  function todayStr() {
+    const d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+  const TODAY = todayStr();
+
+  // Default API base — change this to match your setup if it ever moves.
+  const DEFAULT_API_BASE = "http://room-booking-api.test/api";
+  let apiBase = localStorage.getItem("bookingApiBase") || DEFAULT_API_BASE;
+  let rooms = [];        // [{id, name, capacity, location}]
+  let dayBookings = [];  // [{room, title, booked_by, starts_at, ends_at}] for the current date, across all rooms
+  let currentDate = TODAY;
+
+  const DAY_START = 8;
+  const DAY_END = 18;
+  const HOUR_HEIGHT = 90;
+  const MIN_BLOCK_HEIGHT = 44;
+
+  const timelineEl = document.getElementById("timeline");
+  const listEl = document.getElementById("bookingList");
+  const roomSelect = document.getElementById("fRoom");
+  const msgEl = document.getElementById("fMsg");
+  const submitBtn = document.getElementById("fSubmit");
+  const dateInput = document.getElementById("dateInput");
+  const apiBaseInput = document.getElementById("apiBase");
+  const apiStatus = document.getElementById("apiStatus");
+
+  apiBaseInput.value = apiBase;
+  dateInput.value = currentDate;
+
+  document.getElementById("saveApi").addEventListener("click", () => {
+    apiBase = apiBaseInput.value.trim().replace(/\/$/, "");
+    localStorage.setItem("bookingApiBase", apiBase);
+    init();
+  });
+
+  function timeToMinutes(t) {
+    const [h, m] = t.split(":").map(Number);
+    return h * 60 + m;
+  }
+
+  async function api(path, options) {
+    const res = await fetch(apiBase + path, Object.assign({
+      headers: { "Content-Type": "application/json", "Accept": "application/json" }
+    }, options));
+    let body = null;
+    try { body = await res.json(); } catch (e) { /* no body */ }
+    if (!res.ok) {
+      const err = new Error((body && body.message) || ("Request failed (" + res.status + ")"));
+      err.body = body;
+      throw err;
+    }
+    return body;
+  }
+
+  async function init() {
+    if (!apiBase) {
+      apiStatus.textContent = "Not connected — enter your API base URL above.";
+      apiStatus.classList.remove("bad");
+      return;
+    }
+    apiStatus.textContent = "Connecting…";
+    apiStatus.classList.remove("bad");
+    try {
+      rooms = await api("/rooms");
+      roomSelect.innerHTML = rooms.map(r => `<option value="${r.id}">${r.name}</option>`).join("");
+      apiStatus.textContent = "Connected — " + rooms.length + " room(s) loaded.";
+      await loadDay();
+    } catch (e) {
+      apiStatus.textContent = "Could not reach API: " + e.message;
+      apiStatus.classList.add("bad");
+      timelineEl.innerHTML = "";
+      listEl.innerHTML = "";
+    }
+  }
+
+  async function loadDay() {
+    if (!rooms.length) return;
+    timelineEl.innerHTML = `<div class="empty-day">Loading…</div>`;
+    try {
+      const results = await Promise.all(
+        rooms.map(r => api(`/rooms/${r.id}/schedule/${currentDate}`)
+          .then(list => list.map(b => Object.assign({}, b, { room: r.name })))
+        )
+      );
+      dayBookings = results.flat();
+      renderTimeline();
+      renderList();
+    } catch (e) {
+      timelineEl.innerHTML = `<div class="empty-day">Could not load schedule: ${e.message}</div>`;
+      listEl.innerHTML = "";
+    }
+  }
+
+  function renderTimeline() {
+    let hoursHtml = "";
+    for (let h = DAY_START; h <= DAY_END; h++) {
+      hoursHtml += `<div class="hour-label"><span class="hour-text">${String(h).padStart(2, "0")}:00</span></div>`;
+    }
+
+    let roomsHtml = "";
+    rooms.forEach(room => {
+      let gridLines = "";
+      for (let h = DAY_START; h <= DAY_END; h++) gridLines += `<div class="grid-line"></div>`;
+
+      const roomBookings = dayBookings.filter(b => b.room === room.name);
+      let blocksHtml = "";
+      roomBookings.forEach(b => {
+        const startMin = timeToMinutes(b.starts_at) - DAY_START * 60;
+        const endMin = timeToMinutes(b.ends_at) - DAY_START * 60;
+        const top = (startMin / 60) * HOUR_HEIGHT;
+        const height = Math.max(((endMin - startMin) / 60) * HOUR_HEIGHT, MIN_BLOCK_HEIGHT);
+
+        blocksHtml += `
+          <div class="block" style="top:${top}px; height:${height}px;">
+            <div class="title">${escapeHtml(b.title)}</div>
+            <div class="time">${b.starts_at}–${b.ends_at}</div>
+            <div class="by">${escapeHtml(b.booked_by)}</div>
+          </div>
+        `;
+      });
+
+      roomsHtml += `
+        <div class="room-col">
+          <div class="room-header">${escapeHtml(room.name)}</div>
+          <div class="room-body">${gridLines}${blocksHtml}</div>
+        </div>
+      `;
+    });
+
+    timelineEl.innerHTML = `
+      <div class="hours">
+        <div class="spacer-cell"></div>
+        ${hoursHtml}
+      </div>
+      <div class="rooms">${roomsHtml}</div>
+    `;
+  }
+
+  function renderList() {
+    if (!dayBookings.length) {
+      listEl.innerHTML = `<div class="empty-day">No bookings on this day.</div>`;
+      return;
+    }
+    listEl.innerHTML = dayBookings
+      .slice()
+      .sort((a, b) => a.room.localeCompare(b.room) || timeToMinutes(a.starts_at) - timeToMinutes(b.starts_at))
+      .map(b => `
+        <div class="booking-row">
+          <div class="info">${escapeHtml(b.room)} — ${escapeHtml(b.title)} (${b.starts_at}–${b.ends_at})</div>
+        </div>
+      `).join("");
+  }
+
+  function goToDate(dateStr) {
+    currentDate = dateStr;
+    dateInput.value = dateStr;
+    loadDay();
+  }
+
+  dateInput.addEventListener("change", () => goToDate(dateInput.value));
+
+  document.getElementById("prevDay").addEventListener("click", () => {
+    const d = new Date(currentDate + "T00:00:00");
+    d.setDate(d.getDate() - 1);
+    goToDate(d.toISOString().slice(0, 10));
+  });
+  document.getElementById("nextDay").addEventListener("click", () => {
+    const d = new Date(currentDate + "T00:00:00");
+    d.setDate(d.getDate() + 1);
+    goToDate(d.toISOString().slice(0, 10));
+  });
+  document.getElementById("todayBtn").addEventListener("click", () => goToDate(TODAY));
+
+  submitBtn.addEventListener("click", async () => {
+    const roomId = roomSelect.value;
+    const title = document.getElementById("fTitle").value.trim();
+    const by = document.getElementById("fBy").value.trim();
+    const start = document.getElementById("fStart").value;
+    const end = document.getElementById("fEnd").value;
+
+    msgEl.textContent = "";
+    if (!roomId || !title || !by || !start || !end) {
+      msgEl.textContent = "Fill in every field.";
+      return;
+    }
+    if (timeToMinutes(start) >= timeToMinutes(end)) {
+      msgEl.textContent = "Start must be before end.";
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Booking…";
+    try {
+      await api("/bookings", {
+        method: "POST",
+        body: JSON.stringify({
+          room_id: roomId,
+          title: title,
+          booked_by: by,
+          starts_at: `${currentDate} ${start}:00`,
+          ends_at: `${currentDate} ${end}:00`
+        })
+      });
+      document.getElementById("fTitle").value = "";
+      document.getElementById("fBy").value = "";
+      await loadDay();
+    } catch (e) {
+      let text = e.message;
+      if (e.body && e.body.errors) {
+        text = Object.values(e.body.errors).flat().join(" ");
+      }
+      msgEl.textContent = text;
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Add booking";
+    }
+  });
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, c => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[c]));
+  }
+
+  init();
+</script>
+
+</body>
+</html>
