@@ -69,6 +69,7 @@
   /* ---- Timeline ---- */
   .timeline {
     display: flex;
+    flex-direction: column;
     flex: 1;
     min-width: 0;
     background: #fff;
@@ -78,11 +79,23 @@
     overflow-y: auto;
     overflow-x: hidden;
   }
-  .hours { width: 55px; flex-shrink: 0; border-right: 1px solid #DEDACD; }
-  .spacer-cell {
+  .schedule-head {
+    display: flex;
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background: #fff;
+    flex-shrink: 0;
+  }
+  .corner-cell {
+    width: 55px;
+    flex-shrink: 0;
     height: 36px;
     box-sizing: border-box;
+    border-right: 1px solid #C9C4B3;
   }
+  .schedule-body { display: flex; flex: 1; padding-top: 14px; }
+  .hours { width: 55px; flex-shrink: 0; border-right: 1px solid #C9C4B3; }
   .hour-label {
     position: relative;
     height: 90px;
@@ -109,9 +122,10 @@
     color: #9A968A;
   }
   .rooms { flex: 1; display: flex; position: relative; }
-  .room-col { flex: 1; position: relative; border-right: 1px solid #EFEDE4; }
+  .room-col { flex: 1; position: relative; border-right: 1px solid #C9C4B3; }
   .room-col:last-child { border-right: none; }
   .room-header {
+    flex: 1;
     height: 36px;
     display: flex;
     align-items: center;
@@ -120,10 +134,13 @@
     font-weight: 600;
     color: #1B4B43;
     background: #EDF2EF;
-    border-bottom: 1px solid #DEDACD;
+    border-bottom: 1px solid #C9C4B3;
+    border-right: 1px solid #C9C4B3;
     text-align: center;
     padding: 0 4px;
+    box-sizing: border-box;
   }
+  .room-header:last-child { border-right: none; }
   .room-body { position: relative; }
   .grid-line {
     position: relative;
@@ -232,10 +249,6 @@
 <div class="top-bar">
   <h1>Room Schedule</h1>
   <div class="top-controls">
-    <div class="api-config">
-      <input id="apiBase" placeholder="http://room-booking-api.test/api">
-      <button id="saveApi">Connect</button>
-    </div>
     <div class="date-picker">
       <button id="prevDay">‹</button>
       <input type="date" id="dateInput">
@@ -244,7 +257,7 @@
     </div>
   </div>
 </div>
-<div class="api-status" id="apiStatus">Not connected — enter your API base URL above.</div>
+<div class="api-status" id="apiStatus">Connecting…</div>
 
 <div class="layout">
   <div class="panel">
@@ -288,15 +301,14 @@
   }
   const TODAY = todayStr();
 
-  // Default API base — change this to match your setup if it ever moves.
-  const DEFAULT_API_BASE = "http://room-booking-api.test/api";
-  let apiBase = localStorage.getItem("bookingApiBase") || DEFAULT_API_BASE;
+  // API base — change this if your server address ever moves.
+  const apiBase = "http://127.0.0.1:8000/api";
   let rooms = [];        // [{id, name, capacity, location}]
   let dayBookings = [];  // [{room, title, booked_by, starts_at, ends_at}] for the current date, across all rooms
   let currentDate = TODAY;
 
-  const DAY_START = 8;
-  const DAY_END = 18;
+  const DAY_START = 0;
+  const DAY_END = 24;
   const HOUR_HEIGHT = 90;
   const MIN_BLOCK_HEIGHT = 44;
 
@@ -306,17 +318,9 @@
   const msgEl = document.getElementById("fMsg");
   const submitBtn = document.getElementById("fSubmit");
   const dateInput = document.getElementById("dateInput");
-  const apiBaseInput = document.getElementById("apiBase");
   const apiStatus = document.getElementById("apiStatus");
 
-  apiBaseInput.value = apiBase;
   dateInput.value = currentDate;
-
-  document.getElementById("saveApi").addEventListener("click", () => {
-    apiBase = apiBaseInput.value.trim().replace(/\/$/, "");
-    localStorage.setItem("bookingApiBase", apiBase);
-    init();
-  });
 
   function timeToMinutes(t) {
     const [h, m] = t.split(":").map(Number);
@@ -338,11 +342,6 @@
   }
 
   async function init() {
-    if (!apiBase) {
-      apiStatus.textContent = "Not connected — enter your API base URL above.";
-      apiStatus.classList.remove("bad");
-      return;
-    }
     apiStatus.textContent = "Connecting…";
     apiStatus.classList.remove("bad");
     try {
@@ -382,8 +381,11 @@
       hoursHtml += `<div class="hour-label"><span class="hour-text">${String(h).padStart(2, "0")}:00</span></div>`;
     }
 
+    let headerHtml = "";
     let roomsHtml = "";
     rooms.forEach(room => {
+      headerHtml += `<div class="room-header">${escapeHtml(room.name)}</div>`;
+
       let gridLines = "";
       for (let h = DAY_START; h <= DAY_END; h++) gridLines += `<div class="grid-line"></div>`;
 
@@ -406,18 +408,20 @@
 
       roomsHtml += `
         <div class="room-col">
-          <div class="room-header">${escapeHtml(room.name)}</div>
           <div class="room-body">${gridLines}${blocksHtml}</div>
         </div>
       `;
     });
 
     timelineEl.innerHTML = `
-      <div class="hours">
-        <div class="spacer-cell"></div>
-        ${hoursHtml}
+      <div class="schedule-head">
+        <div class="corner-cell"></div>
+        ${headerHtml}
       </div>
-      <div class="rooms">${roomsHtml}</div>
+      <div class="schedule-body">
+        <div class="hours">${hoursHtml}</div>
+        <div class="rooms">${roomsHtml}</div>
+      </div>
     `;
   }
 

@@ -23,13 +23,14 @@ class Booking extends Model
     }
 
     // Used by schedule/current endpoints: time only, e.g. "09:00"
-    public function toTimeArray(): array
-    {
-        return [
-            'title' => $this->title,
-            'booked_by' => $this->booked_by,
-            'starts_at' => $this->starts_at->format('H:i'),
-            'ends_at' => $this->ends_at->format('H:i'),
-        ];
-    }
+public function toTimeArray(): array
+{
+    return [
+        'id' => $this->id,        
+        'title' => $this->title,
+        'booked_by' => $this->booked_by,
+        'starts_at' => $this->starts_at->format('H:i'),
+        'ends_at' => $this->ends_at->format('H:i'),
+    ];
+}
 }

@@ -42,4 +42,27 @@ class BookingController extends Controller
             return response()->json($booking, 201);
         });
     }
+    public function update(StoreBookingRequest $request, Booking $booking)
+{
+    $data = $request->validated();
+
+    $overlaps = Booking::where('room_id', $data['room_id'])
+        ->where('id', '!=', $booking->id)
+        ->where('starts_at', '<', $data['ends_at'])
+        ->where('ends_at', '>', $data['starts_at'])
+        ->exists();
+
+    if ($overlaps) {
+        return response()->json(['message' => 'Room is already booked for this period.'], 422);
+    }
+
+    $booking->update($data);
+    return response()->json($booking);
+}
+
+public function destroy(Booking $booking)
+{
+    $booking->delete();
+    return response()->json(null, 204);
+}
 }
