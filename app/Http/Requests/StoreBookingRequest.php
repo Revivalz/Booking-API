@@ -8,7 +8,7 @@ class StoreBookingRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true; // CHANGE from false
+        return true; //from false
     }
 
     public function rules(): array
