@@ -1,6 +1,6 @@
 # Room Booking API
 
-A REST API for booking meeting rooms, built with Laravel and MySQL. Prevents overlapping bookings for the same room and includes a simple HTML dashboard for viewing and managing bookings visually.
+A REST API for booking meeting rooms, built with Laravel and MySQL. Prevents overlapping bookings for the same room and includes a simple HTML graph for viewing and managing bookings visually.
 
 ## Requirements
 
@@ -33,11 +33,11 @@ php artisan serve
 
 API base URL: `http://127.0.0.1:8000/api`
 
-## Dashboard
+## graph
 
-A standalone HTML dashboard (`public/dashboard.html`) is included for visually browsing and managing bookings — a day-by-day timeline per room, with a panel to add, edit and delete bookings.
+A standalone HTML graph (`public/graph.html`) is included for visually browsing and managing bookings — a day-by-day timeline per room, with a panel to add, edit and delete bookings.
 
-Open it at `http://127.0.0.1:8000/dashboard.html` while `php artisan serve` is running. It talks to the API directly from the browser (no build step needed) and expects the API base URL set near the top of its `<script>` tag to match your server address.
+Open it at `http://127.0.0.1:8000/graph.html` while `php artisan serve` is running. It talks to the API directly from the browser (no build step needed) and expects the API base URL set near the top of its `<script>` tag to match your server address.
 
 ## Endpoints
 
