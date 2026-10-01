@@ -13,9 +13,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        $middleware->alias([
+            'api.key' => \App\Http\Middleware\ApiKeyMiddleware::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        // ADD this line: API routes always answer with JSON errors
         $exceptions->shouldRenderJsonWhen(fn (Request $request) => $request->is('api/*'));
     })->create();

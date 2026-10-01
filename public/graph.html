@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Bookings — Timeline</title>
 <link rel="stylesheet" href="styles.css">
+<script src="config.js"></script>
 </head>
 <body>
 
@@ -65,8 +66,15 @@
   }
   const TODAY = todayStr();
 
-  // API base — change this if your server address ever moves.
-  const apiBase = "http://127.0.0.1:8000/api";
+  // API base and key come from config.js (gitignored — see config.example.js)
+  if (typeof API_CONFIG === "undefined") {
+    document.getElementById("apiStatus").textContent =
+      "Missing config.js — copy config.example.js to config.js and fill in your API key.";
+    document.getElementById("apiStatus").classList.add("bad");
+    throw new Error("API_CONFIG not found");
+  }
+  const apiBase = API_CONFIG.base;
+  const apiKey = API_CONFIG.key;
   let rooms = [];        // [{id, name, capacity, location}]
   let dayBookings = [];  // [{id, room, title, booked_by, starts_at, ends_at}] for the current date, across all rooms
   let currentDate = TODAY;
@@ -97,7 +105,7 @@
 
   async function api(path, options) {
     const res = await fetch(apiBase + path, Object.assign({
-      headers: { "Content-Type": "application/json", "Accept": "application/json" }
+      headers: { "Content-Type": "application/json", "Accept": "application/json", "X-API-KEY": apiKey }
     }, options));
     let body = null;
     try { body = await res.json(); } catch (e) { /* no body */ }
